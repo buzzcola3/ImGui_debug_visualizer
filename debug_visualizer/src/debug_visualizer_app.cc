@@ -300,6 +300,19 @@ const DebugVisualizer* DebugVisualizerApp::findTile(const std::string& id) const
     return find_tile_internal(id);
 }
 
+void DebugVisualizerApp::request_close() {
+    if (impl_ && impl_->window) {
+        glfwSetWindowShouldClose(impl_->window, GLFW_TRUE);
+    }
+}
+
+bool DebugVisualizerApp::is_running() const {
+    if (!impl_ || !impl_->window) {
+        return false;
+    }
+    return glfwWindowShouldClose(impl_->window) == GLFW_FALSE;
+}
+
 DebugVisualizer& DebugVisualizerApp::ensure_tile(const std::string& id, const std::string& title) {
     if (!impl_) {
         static DebugVisualizer dummy;
@@ -313,6 +326,16 @@ const DebugVisualizer* DebugVisualizerApp::find_tile_internal(const std::string&
         return nullptr;
     }
     return impl_->visualizer.find_window_tile(id);
+}
+
+int RunVisualizerApp(bool enable_docking, const DebugVisualizerApp::UpdateCallback& callback) {
+    DebugVisualizerApp app(enable_docking);
+    return app.run(callback);
+}
+
+int RunVisualizerApp(DebugVisualizerAppOptions options, const DebugVisualizerApp::UpdateCallback& callback) {
+    DebugVisualizerApp app(std::move(options));
+    return app.run(callback);
 }
 
 }  // namespace dbgvis

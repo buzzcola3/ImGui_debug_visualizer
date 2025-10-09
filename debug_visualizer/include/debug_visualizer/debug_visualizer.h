@@ -312,6 +312,9 @@ public:
     DebugVisualizer* findTile(const std::string& id);
     const DebugVisualizer* findTile(const std::string& id) const;
 
+    void request_close();
+    bool is_running() const;
+
 private:
     friend class TileCollection;
     struct Impl;
@@ -320,5 +323,76 @@ private:
     DebugVisualizer& ensure_tile(const std::string& id, const std::string& title = {});
     const DebugVisualizer* find_tile_internal(const std::string& id) const;
 };
+
+int RunVisualizerApp(bool enable_docking, const DebugVisualizerApp::UpdateCallback& callback);
+int RunVisualizerApp(DebugVisualizerAppOptions options, const DebugVisualizerApp::UpdateCallback& callback);
+
+void StartBackgroundVisualizer();
+void StartBackgroundVisualizer(bool enable_docking);
+void StartBackgroundVisualizer(DebugVisualizerAppOptions options);
+void ShutdownBackgroundVisualizer();
+bool IsBackgroundVisualizerRunning();
+
+void value(const std::string& tab_id, const std::string& key, int value);
+void value(const std::string& tab_id, const std::string& key, int64_t value);
+void value(const std::string& tab_id, const std::string& key, float value);
+void value(const std::string& tab_id, const std::string& key, double value);
+void value(const std::string& tab_id, const std::string& key, bool value);
+void value(const std::string& tab_id, const std::string& key, std::string value);
+void value(const std::string& tab_id, const std::string& key, const char* value);
+
+inline void value(const std::string& key, int v) {
+    value("Telemetry", key, v);
+}
+
+inline void value(const std::string& key, int64_t v) {
+    value("Telemetry", key, v);
+}
+
+inline void value(const std::string& key, float v) {
+    value("Telemetry", key, v);
+}
+
+inline void value(const std::string& key, double v) {
+    value("Telemetry", key, v);
+}
+
+inline void value(const std::string& key, bool v) {
+    value("Telemetry", key, v);
+}
+
+inline void value(const std::string& key, std::string v) {
+    value("Telemetry", key, std::move(v));
+}
+
+inline void value(const std::string& key, const char* v) {
+    value("Telemetry", key, v);
+}
+
+void graph_sample(const std::string& tab_id, const std::string& key, float sample, const GraphConfig& config = {});
+void graph_samples(const std::string& tab_id, const std::string& key, const std::vector<float>& samples, const GraphConfig& config = {});
+
+inline void graph_sample(const std::string& key, float sample, const GraphConfig& config = {}) {
+    graph_sample("Telemetry", key, sample, config);
+}
+
+inline void graph_samples(const std::string& key, const std::vector<float>& samples, const GraphConfig& config = {}) {
+    graph_samples("Telemetry", key, samples, config);
+}
+
+void structure(const std::string& tab_id, const std::string& key, const std::function<void(StructureBuilder&)>& builder);
+
+inline void structure(const std::string& key, const std::function<void(StructureBuilder&)>& builder) {
+    structure("Telemetry", key, builder);
+}
+
+void clear_tab(const std::string& tab_id);
+
+inline void clear_tab() {
+    clear_tab("Telemetry");
+}
+
+void set_window_title(std::string title);
+void show_window(bool visible);
 
 }  // namespace dbgvis

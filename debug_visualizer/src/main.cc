@@ -19,80 +19,73 @@
  *  Email: buzzcola3@gmail.com
  */
 
-#include <cmath>
-
 #include "debug_visualizer/debug_visualizer.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <thread>
 
 namespace {
 constexpr float kTargetFrameTimeMs = 16.67f;
-
-dbgvis::GraphConfig MakeGraphConfig(size_t max_samples, bool auto_scale = true) {
-    dbgvis::GraphConfig config;
-    config.max_samples = max_samples;
-    config.auto_scale = auto_scale;
-    return config;
-}
-
+constexpr int kMaxCounterValue = 127;
+constexpr int kCounterModulo = kMaxCounterValue + 1;
 }  // namespace
 
 int main() {
-    dbgvis::DebugVisualizerApp app(true);
+    dbgvis::StartBackgroundVisualizer();
+    dbgvis::set_window_title("Debug Window");
 
-    float phase = 0.0f;
-    const auto frame_graph_config = MakeGraphConfig(240);
-    const auto waveform_config = MakeGraphConfig(360);
+    while (!dbgvis::IsBackgroundVisualizerRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
-    return app.run([&](dbgvis::DebugVisualizerApp& app_ctx, float elapsed_time, float delta_time) {
-        phase += delta_time;
+    int counter = 0;
+    uint64_t wraps = 0;
+    auto start_time = std::chrono::steady_clock::now();
+    auto last_frame_time = start_time;
 
-        dbgvis::DebugVisualizer& debug_tile = app_ctx.Tiles["Main"];
-        debug_tile.set_window_title("Debug Window");
+    while (dbgvis::IsBackgroundVisualizerRunning()) {
+        const auto now = std::chrono::steady_clock::now();
+        const std::chrono::duration<float> elapsed = now - start_time;
+        const std::chrono::duration<float> delta = now - last_frame_time;
+        last_frame_time = now;
 
-        dbgvis::DebugVisualizer::Tab& overview = debug_tile.tabs["Overview"];
-        dbgvis::DebugVisualizer::Tab& graphs = debug_tile.tabs["Graphs"];
-        dbgvis::DebugVisualizer::Tab& systems = debug_tile.tabs["Systems"];
+        const float delta_seconds = std::max(delta.count(), 1.0f / 240.0f);
+        const float frame_time_ms = delta_seconds * 1000.0f;
+        const float fps = delta_seconds > 0.0f ? 1.0f / delta_seconds : 0.0f;
 
-        if (!graphs.Graph.contains("Frame Time (ms)")) {
-            graphs.addGraph("Frame Time (ms)", frame_graph_config);
+        const int previous_counter = counter;
+        counter = (counter + 1) % kCounterModulo;
+        if (counter == 0) {
+            ++wraps;
         }
-        if (!graphs.Graph.contains("Sine Wave")) {
-            graphs.addGraph("Sine Wave", waveform_config);
-        }
 
-        const float frame_time_ms = delta_time * 1000.0f;
-        const float fps = delta_time > 0.0f ? 1.0f / delta_time : 0.0f;
+        const int ticks_this_frame = counter >= previous_counter ? counter - previous_counter : (counter + kCounterModulo) - previous_counter;
+        const float rate_per_second = delta_seconds > 0.0f ? ticks_this_frame / delta_seconds : 0.0f;
         const float budget_used = frame_time_ms / kTargetFrameTimeMs;
-        const float cpu_load = 0.35f + 0.20f * std::sin(phase * 0.5f);
-        const bool is_paused = std::sin(phase * 0.17f) > 0.8f;
+        const int remaining = counter == 0 ? kMaxCounterValue : kMaxCounterValue - counter;
 
-        overview.update_value("Timing/FPS", fps);
-        overview.update_value("Timing/Frame time (ms)", frame_time_ms);
-        overview.update_value("Timing/Budget used", budget_used);
-        overview.update_value("Systems/CPU load", cpu_load * 100.0f);
-        overview.update_value("Systems/Paused", is_paused);
+        dbgvis::value("Telemetry", "Counter/Current value", counter);
+        dbgvis::value("Telemetry", "Counter/Wraps", static_cast<int64_t>(wraps));
+        dbgvis::value("Telemetry", "Counter/Ticks this frame", ticks_this_frame);
+        dbgvis::value("Telemetry", "Counter/Rate per second", rate_per_second);
+        dbgvis::value("Telemetry", "Counter/Remaining to wrap", remaining);
+        dbgvis::value("Telemetry", "Timing/Elapsed (s)", elapsed.count());
+        dbgvis::value("Telemetry", "Timing/FPS", fps);
+        dbgvis::value("Telemetry", "Timing/Frame time (ms)", frame_time_ms);
+        dbgvis::value("Telemetry", "Timing/Budget used", budget_used);
 
-        graphs.Graph["Frame Time (ms)"].x = frame_time_ms;
-        graphs.Graph["Sine Wave"].x = std::sin(phase);
+        dbgvis::graph_sample("Telemetry", "Counter Value", static_cast<float>(counter));
 
-        systems.update_structure("Player", [&](dbgvis::StructureBuilder& builder) {
-            builder.field("health", 92);
-            builder.field("energy", 58.0f + 10.0f * std::sin(phase * 0.3f));
-
-            auto position = builder.nested("position");
-            position.field("x", std::cos(phase) * 6.0f);
-            position.field("y", std::sin(phase) * 6.0f);
-            position.field("z", 1.5f);
-
-            auto inventory = builder.nested("inventory");
-            inventory.field("potions", 2);
-            inventory.field("keys", 1);
-            inventory.field("gold", 128);
+        dbgvis::structure("Telemetry", "Counter/Progress", [counter, remaining, wraps](dbgvis::StructureBuilder& builder) {
+            builder.field("current", counter);
+            builder.field("wraps", static_cast<int64_t>(wraps));
+            builder.field("remaining_to_wrap", remaining);
         });
 
-        systems.update_structure("World", [&](dbgvis::StructureBuilder& builder) {
-            builder.field("time_of_day", "Sunset");
-            builder.field("weather", "Clear");
-            builder.field("temperature_c", 22.0f + 2.0f * std::sin(phase * 0.1f));
-        });
-    });
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+    dbgvis::ShutdownBackgroundVisualizer();
+    return 0;
 }

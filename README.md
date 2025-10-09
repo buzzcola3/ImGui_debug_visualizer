@@ -2,12 +2,15 @@
 
 A lightweight Dear ImGui-based debug instrumentation library that can be embedded into any C++ application. It lets you register scalar values, live graphs, and hierarchical structures keyed by name, then renders them in a ready-to-use ImGui window so you can monitor and tune your systems in real time.
 
+![Debug visualizer demo](./example.gif)
+
 ## Features
 
 - Register scalar values (ints, floats, booleans, strings) keyed by name.
 - Stream samples into time-series line graphs with automatic or manual scaling.
 - Build hierarchical structures with a fluent builder API to visualize complex state.
 - Organize your telemetry into tabs and spawn additional window tiles for subsystem-specific dashboards.
+- Fire-and-forget API that feels like logging: call `dbgvis::value()` anywhere and a background thread takes care of rendering.
 - Minimal dependencies for the data API, with built-in GLFW/OpenGL window management when you need it.
 
 ## Getting Started
@@ -40,58 +43,69 @@ bazel test //...
 
 1. Add this repository as a Bazel dependency (e.g., via `local_repository`).
 2. Depend on `//debug_visualizer:debug_visualizer` from your `cc_binary` or `cc_library` targets.
-3. Instantiate the provided `DebugVisualizerApp` and update your values inside the callback—window creation, OpenGL, and ImGui backends are handled for you.
+3. Include `debug_visualizer/debug_visualizer.h` and start publishing values—no manual render loop required.
 
 ```cpp
-#include <cmath>
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <thread>
 #include "debug_visualizer/debug_visualizer.h"
 
 int main() {
-    dbgvis::DebugVisualizerApp app(true);  // enable docking
-    float phase = 0.0f;
+    dbgvis::StartBackgroundVisualizer();         // optional: the first dbgvis::value() will start it automatically
+    dbgvis::set_window_title("Debug Window");    // tweak the main window title once
 
-    return app.run([&](dbgvis::DebugVisualizerApp& ctx, float elapsed, float delta) {
-        phase += delta;
+    while (!dbgvis::IsBackgroundVisualizerRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
-        auto& tile = ctx.Tiles["Main"];  // window id doubles as title by default
+    constexpr int kMaxCounterValue = 255;
+    constexpr int kCounterModulo = kMaxCounterValue + 1;
 
-        auto& overview = tile.tabs["Overview"];
-        auto& waveforms = tile.tabs["Waveforms"];
-        if (!waveforms.Graph.contains("sine")) {
-            waveforms.addGraph("sine");
-            waveforms.addGraph("cosine");
+    auto start = std::chrono::steady_clock::now();
+    auto last = start;
+
+    int counter = 0;
+    std::uint64_t wraps = 0;
+    while (dbgvis::IsBackgroundVisualizerRunning()) {
+        const auto now = std::chrono::steady_clock::now();
+        const std::chrono::duration<float> elapsed = now - start;
+        const std::chrono::duration<float> delta = now - last;
+        last = now;
+
+        const float delta_seconds = std::max(delta.count(), 1.0f / 240.0f);
+        const int previous = counter;
+        counter = (counter + 1) % kCounterModulo;
+        if (counter == 0) {
+            ++wraps;
         }
 
-        overview.update_value("elapsed", elapsed);
-        overview.update_value("delta", delta);
+        const int ticks_this_frame = counter >= previous ? counter - previous : (counter + kCounterModulo) - previous;
+        const int remaining = counter == 0 ? kMaxCounterValue : kMaxCounterValue - counter;
 
-        waveforms.Graph["sine"].x = std::sin(phase);
-        waveforms.Graph["cosine"].x = std::cos(phase);
+        dbgvis::value("Telemetry", "Counter/Current value", counter);
+        dbgvis::value("Telemetry", "Counter/Wraps", static_cast<std::int64_t>(wraps));
+        dbgvis::value("Telemetry", "Counter/Ticks this frame", ticks_this_frame);
+        dbgvis::value("Telemetry", "Counter/Rate per second", ticks_this_frame / delta_seconds);
+        dbgvis::value("Telemetry", "Counter/Remaining to wrap", remaining);
+        dbgvis::value("Telemetry", "Timing/Elapsed (s)", elapsed.count());
 
-        overview.update_structure("player", [&](dbgvis::StructureBuilder& builder) {
-            builder.field("health", 87);
-            auto position = builder.nested("position");
-            position.field("x", std::sin(phase));
-            position.field("y", std::cos(phase));
-            position.field("z", 0.0f);
+        dbgvis::graph_sample("Telemetry", "Counter Value", static_cast<float>(counter));
+        dbgvis::structure("Telemetry", "Counter/Progress", [counter, wraps, remaining](dbgvis::StructureBuilder& builder) {
+            builder.field("current", counter);
+            builder.field("wraps", static_cast<std::int64_t>(wraps));
+            builder.field("remaining_to_wrap", remaining);
         });
-    });
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+
+    dbgvis::ShutdownBackgroundVisualizer();
 }
 ```
 
-If you already have an ImGui frame inside your engine, you can still construct `dbgvis::DebugVisualizer` directly and call `render()` just like before; the helper app simply keeps the boilerplate out of your way for quick diagnostics and standalone tooling.
-
-Need a second tabbed window dedicated to another system? Add another tile and drive it with the same API:
-
-```cpp
-auto& network_tile = ctx.Tiles["Network Monitor"];
-auto& metrics = network_tile.tabs["Metrics"];
-if (!metrics.Graph.contains("Trends/Bandwidth")) {
-    metrics.addGraph("Trends/Bandwidth");
-}
-metrics.update_value("Traffic/Bandwidth", bandwidth_kbps);
-metrics.Graph["Trends/Bandwidth"].x = bandwidth_kbps;
-```
+Want more control? You can still instantiate `dbgvis::DebugVisualizerApp` yourself and call the low-level APIs exactly as before—the ergonomic helpers are layered on top of the same underlying types.
 
 ## Project Layout
 

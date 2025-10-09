@@ -4,6 +4,7 @@ cc_library(
     srcs = [
         "src/debug_visualizer.cc",
         "src/debug_visualizer_app.cc",
+        "src/debug_visualizer_service.cc",
     ],
     includes = ["include"],
     copts = ["-std=c++17"],

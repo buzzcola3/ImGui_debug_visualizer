@@ -1,0 +1,6 @@
+cc_test(
+    name = "debug_visualizer_test",
+    srcs = ["debug_visualizer_test.cc"],
+    copts = ["-std=c++17"],
+    deps = ["//debug_visualizer:debug_visualizer"],
+)

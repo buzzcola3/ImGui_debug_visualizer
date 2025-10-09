@@ -1,0 +1,27 @@
+cc_library(
+    name = "debug_visualizer",
+    hdrs = glob(["include/**/*.h"]),
+    srcs = [
+        "src/debug_visualizer.cc",
+        "src/debug_visualizer_app.cc",
+    ],
+    includes = ["include"],
+    copts = ["-std=c++17"],
+    deps = [
+        "@glew//:glew_static",
+        "@glfw//:glfw",
+        "@imgui//:imgui",
+        "@imgui//backends:platform-glfw",
+        "@imgui//backends:renderer-opengl3",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "debug_visualizer_demo",
+    srcs = ["src/main.cc"],
+    copts = ["-std=c++17"],
+    deps = [
+        ":debug_visualizer",
+    ],
+)

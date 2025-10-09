@@ -1,0 +1,7 @@
+# Build outputs
+bazel-*
+*.lock
+external
+
+# Generated compile commands
+.cache/

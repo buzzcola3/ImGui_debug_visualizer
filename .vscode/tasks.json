@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build debug_visualizer_demo",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "bazel run @hedron_compile_commands//:refresh_all && bazel build //debug_visualizer:debug_visualizer_demo"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

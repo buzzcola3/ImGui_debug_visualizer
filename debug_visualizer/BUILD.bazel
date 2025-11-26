@@ -2,6 +2,7 @@ cc_library(
     name = "debug_visualizer",
     hdrs = glob(["include/**/*.h"]),
     srcs = [
+        "src/bsd_string_shim.cc",
         "src/debug_visualizer.cc",
         "src/debug_visualizer_app.cc",
         "src/debug_visualizer_service.cc",
@@ -14,6 +15,8 @@ cc_library(
         "@imgui//:imgui",
         "@imgui//backends:platform-glfw",
         "@imgui//backends:renderer-opengl3",
+        "@libx11//:libx11",
+        "@mesa_gl//:gl",
     ],
     visibility = ["//visibility:public"],
 )

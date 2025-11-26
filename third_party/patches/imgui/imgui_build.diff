@@ -1,0 +1,10 @@
+--- imgui_backends_BUILD.orig	2025-11-26 14:01:08.480926000 +0100
++++ imgui_backends_BUILD.new	2025-11-26 13:41:51.549230700 +0100
+@@ -58,7 +58,6 @@
+             "/DEFAULTLIB:opengl32",
+         ],
+         "@bazel_tools//src/conditions:linux_x86_64": [
+-            "-lGL",
+             "-ldl",
+         ],
+         "//conditions:default": [],

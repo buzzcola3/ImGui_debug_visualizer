@@ -1,0 +1,26 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -7,8 +7,12 @@ cc_library(
+         "include/GL/glxew.h",
+         "include/GL/wglew.h",
+     ],
+-    defines = ["GLEW_STATIC"],
++    defines = [
++        "GLEW_STATIC",
++        "GLEW_NO_GLU",
++    ],
+     strip_include_prefix = "include",
++    deps = ["@libx11//:libx11"],
+     visibility = ["//visibility:public"],
+     alwayslink = False,
+ )
+diff --git a/MODULE.bazel b/MODULE.bazel
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -5,4 +5,5 @@ module(
+     compatibility_level = 1,
+ )
+ 
+ bazel_dep(name = "platforms", version = "0.0.10")
++bazel_dep(name = "libx11", version = "1.8.12.bcr.4")

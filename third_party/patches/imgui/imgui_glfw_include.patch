@@ -1,0 +1,27 @@
+diff --git a/backends/imgui_impl_glfw.cpp b/backends/imgui_impl_glfw.cpp
+--- a/backends/imgui_impl_glfw.cpp
++++ b/backends/imgui_impl_glfw.cpp
+@@ -103,6 +103,9 @@
+ #endif
+ 
+ // GLFW
++#ifndef GLFW_INCLUDE_NONE
++#define GLFW_INCLUDE_NONE
++#endif
+ #include <GLFW/glfw3.h>
+ 
+ #ifdef _WIN32
+@@
+ #include <stdio.h>              // for snprintf()
+ 
+diff --git a/backends/BUILD.bazel b/backends/BUILD.bazel
+--- a/backends/BUILD.bazel
++++ b/backends/BUILD.bazel
+@@ -58,7 +58,6 @@ cc_library(
+             "/DEFAULTLIB:opengl32",
+         ],
+         "@bazel_tools//src/conditions:linux_x86_64": [
+-            "-lGL",
+             "-ldl",
+         ],
+         "//conditions:default": [],

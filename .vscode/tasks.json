@@ -7,7 +7,7 @@
             "command": "bash",
             "args": [
                 "-c",
-                "bazel run @hedron_compile_commands//:refresh_all && bazel build //debug_visualizer:debug_visualizer_demo"
+                "bazel run @hedron_compile_commands//:refresh_all && bazel build --config=amd64_gnu //debug_visualizer:debug_visualizer_demo"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

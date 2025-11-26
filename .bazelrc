@@ -1,0 +1,21 @@
+# Platform configs for cross-compilation
+build:amd64_musl --platforms=@zig_sdk//platform:linux_amd64
+build:amd64_musl --extra_toolchains=@zig_sdk//toolchain:linux_amd64_musl
+
+build:amd64_gnu --platforms=@zig_sdk//platform:linux_amd64
+build:amd64_gnu --extra_toolchains=@zig_sdk//toolchain:linux_amd64_gnu.2.31
+
+build:arm64_musl --platforms=@zig_sdk//platform:linux_arm64
+build:arm64_musl --extra_toolchains=@zig_sdk//toolchain:linux_arm64_musl
+
+build:arm64_gnu --platforms=@zig_sdk//platform:linux_arm64
+build:arm64_gnu --extra_toolchains=@zig_sdk//toolchain:linux_arm64_gnu.2.31
+
+# Hermetic toolchain only
+build --action_env BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+
+# Platform-specific sandboxing (optional, but recommended)
+common --enable_platform_specific_config
+build:linux --sandbox_add_mount_pair=/tmp
+build:macos --sandbox_add_mount_pair=/var/tmp
+build:windows --sandbox_add_mount_pair=C:\Temp
